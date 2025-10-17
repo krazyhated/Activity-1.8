@@ -1,7 +1,5 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
-import gsap from 'gsap'
-import GUI from 'lil-gui' // 👈 Import the Debug UI library
 
 /**
  * Base
@@ -13,38 +11,51 @@ const canvas = document.querySelector('canvas.webgl')
 const scene = new THREE.Scene()
 
 /**
+ * Texture Loading
+ */
+const loadingManager = new THREE.LoadingManager()
+
+loadingManager.onStart = () => { console.log('Texture loading started...') }
+loadingManager.onLoad = () => { console.log('All textures loaded!') }
+loadingManager.onProgress = (url, loaded, total) => { console.log(`Loading texture: ${url} (${loaded}/${total})`) }
+loadingManager.onError = () => { console.log('Error loading texture!') }
+
+const textureLoader = new THREE.TextureLoader(loadingManager)
+const colorTexture = textureLoader.load('/textures/door/color.jpg')
+
+// Optional extra maps (if you have them in your folder)
+// const alphaTexture = textureLoader.load('/textures/door/alpha.jpg')
+// const heightTexture = textureLoader.load('/textures/door/height.jpg')
+// const normalTexture = textureLoader.load('/textures/door/normal.jpg')
+// const aoTexture = textureLoader.load('/textures/door/ambientOcclusion.jpg')
+// const metalnessTexture = textureLoader.load('/textures/door/metalness.jpg')
+// const roughnessTexture = textureLoader.load('/textures/door/roughness.jpg')
+
+/**
+ * Texture Transformations
+ */
+// Repeat the texture 2x horizontally and 3x vertically
+colorTexture.repeat.x = 2
+colorTexture.repeat.y = 3
+colorTexture.wrapS = THREE.RepeatWrapping
+colorTexture.wrapT = THREE.RepeatWrapping
+
+// Rotate texture by 45° around its center
+colorTexture.rotation = Math.PI * 0.25
+colorTexture.center.set(0.5, 0.5)
+
+// Filtering (to make textures sharper or pixelated)
+colorTexture.generateMipmaps = false
+colorTexture.minFilter = THREE.NearestFilter
+colorTexture.magFilter = THREE.NearestFilter
+
+/**
  * Object
  */
 const geometry = new THREE.BoxGeometry(1, 1, 1)
-const material = new THREE.MeshBasicMaterial({ color: 0xff0000 })
+const material = new THREE.MeshBasicMaterial({ map: colorTexture })
 const mesh = new THREE.Mesh(geometry, material)
 scene.add(mesh)
-
-/**
- * Debug UI
- */
-const gui = new GUI()
-
-// Create an object to store tweakable parameters
-const parameters = {
-    color: 0xff0000,
-    spin: () => {
-        gsap.to(mesh.rotation, { duration: 1, y: mesh.rotation.y + Math.PI * 2 })
-    }
-}
-
-// Color control
-gui.addColor(parameters, 'color').name('Box Color').onChange(() => {
-    material.color.set(parameters.color)
-})
-
-// Position controls
-gui.add(mesh.position, 'x').min(-3).max(3).step(0.01).name('Position X')
-gui.add(mesh.position, 'y').min(-3).max(3).step(0.01).name('Position Y')
-gui.add(mesh.position, 'z').min(-3).max(3).step(0.01).name('Position Z')
-
-// Spin button
-gui.add(parameters, 'spin').name('Spin Box')
 
 /**
  * Sizes
@@ -73,10 +84,12 @@ window.addEventListener('resize', () =>
  * Camera
  */
 const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 100)
-camera.position.z = 3
+camera.position.set(1, 1, 2)
 scene.add(camera)
 
-// Controls
+/**
+ * Controls
+ */
 const controls = new OrbitControls(camera, canvas)
 controls.enableDamping = true
 
@@ -104,7 +117,7 @@ const tick = () =>
     // Render
     renderer.render(scene, camera)
 
-    // Call tick again on the next frame
+    // Loop
     window.requestAnimationFrame(tick)
 }
 
